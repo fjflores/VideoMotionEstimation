@@ -1,6 +1,6 @@
 # README #
 
-This README file explains how to use the Video motion estimation toolbox.
+This is a fork of the Video motion estimation toolbox created by Mark Dow at University of Oregon. The original site where the code was hosted (http://lcni.uoregon.edu/~dow/Geek_software/Video_motion/Video_motion_estimation.html#video_total_motion_estimation) it is not working anymore. This toolbox has been previously used in one publication (doi: 10.1016/j.jneumeth.2014.06.002).
 
 ### Summary ###
 
