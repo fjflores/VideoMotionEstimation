@@ -34,7 +34,7 @@ of the video to analyze separately, saving time and memory usage.
     2. Select the crop box using the data cursor tool from the matlab figure.
         * select multiple points by using "Alt+click".
     3. The crop box is a 4-element vector with the following elements:
-        > \[ XbottomLeft YtopLeft XtopRight YbottomRight \]
+        \[ XbottomLeft YtopLeft XtopRight YbottomRight \]
     4. Now run the motion analysis algorithm:
             [motion,t,dsScale]=video_total_motion_v2('NVT-1.avi',[6 236 314 471],true,true,0);
 
