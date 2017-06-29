@@ -39,7 +39,3 @@ of the video to analyze separately, saving time and memory usage.
             [motion,t,dsScale]=video_total_motion_v2('NVT-1.avi',[6 236 314 471],true,true,0);
 
 It will take some time to process, depending on the number of frames, and the size of the crop box.
-
-### Who do I talk to? ###
-
-* Francisco J. Flores (fjflores@mit.edu)
