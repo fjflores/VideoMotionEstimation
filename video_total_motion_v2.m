@@ -1,4 +1,5 @@
-function [ arrMotion, t, dsScale ] = video_total_motion_v2( strFilename, rcCrop, bShow, bWrite, offset )
+function [ arrMotion, t, dsScale, imSumDiff ] = video_total_motion_v2(...
+    strFilename, rcCrop, bShow, bWrite, offset )
 
 % video_total_motion_v2( strFilename, rcCrop, bShow, bWrite )
 %
@@ -60,23 +61,20 @@ function [ arrMotion, t, dsScale ] = video_total_motion_v2( strFilename, rcCrop,
 % Created     February 2, 2009
 % Modified    March    5, 2009	(optional crop rectangle, total motion
 %                                image, show and write options)
-%
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%
+
 % Hardcoded information:
-
 nDiffThreshold  = 20;    % [1,255] Difference threshold for inclusion,
 % independently for each 8-bit channel.
+
 % It might be better use a single luminance channel
 % particularly for speed (not yet implemented).
-tsMax           =  1;    % Number of temporal differences found,
-% from nSkip*2^1 to nSkip*2^(tsMax-1)
-nSkip           =  1;   % Frame index increment.
-% 1 for every frame
 
-%
-%%%%%%%%%%%%%%%%%%%%%%%%
+tsMax =  2;    % Number of temporal differences to compute.
+
+% from nSkip*2^1 to nSkip*2^(tsMax-1)
+nSkip =  1;   % Decimation factor. Set to 1 for no decimation.
 
 % check user input
 if nargin < 5
@@ -88,26 +86,29 @@ fprintf( 'Preprocessing...' )
 strFilestem = strFilename( 1 : length( strFilename ) - 4 );
 videoIn = VideoReader( strFilename )
 nFrames = get( videoIn, 'NumberOfFrames' );
-nFrames = nFrames - 30; % drop the last 10 seconds of video recording.
 frameRate = get( videoIn, 'FrameRate' );
-
-%added by FJF 2014-01-12
-% nFrames = 100;
 
 % Get a full frame.
 imFrameFull = read( videoIn, 1 );
 
 % Default to no cropping
 if rcCrop == 0
-    rcCrop = [ 1 1 size( imFrameFull,2 ) size( imFrameFull,1 ) ];
+    [ m, n, z ] = size( imFrameFull );
+    rcCrop = [ 1 1 n m ];
+    clear m n z
     
 else
-    % To Do: sanity check on crop boundaries   
-    strFilestem = [ strFilestem '_' num2str( rcCrop( 1 ) ) '-' num2str( rcCrop( 2 ) )  '-' num2str( rcCrop( 3 ) ) '-' num2str( rcCrop( 4 ) ) ];
+    % To Do: sanity check on crop boundaries
+    cropStr = strcat(...
+        num2str( rcCrop( 1 ) ), '-',...
+        num2str( rcCrop( 2 ) ), '-',...
+        num2str( rcCrop( 3 ) ), '-',...
+        num2str( rcCrop( 4 ) ) )
+    strFilestem = strcat( strFilestem, cropStr );
 
 end
 
-% imFrame = imFrameFull( rcCrop( 2 ) : rcCrop( 4 ), rcCrop( 1 ) : rcCrop( 3 ), : );
+% Crop image if required.
 imFrame = crop( imFrameFull, rcCrop );
 [ m, n, z ] = size( imFrame );
 
@@ -116,11 +117,9 @@ imFrame0 = repmat( zeros( m, n, z ), 1, 1, 1, 3 );
 imDiff = zeros( m, n, z );
 imSumDiff = zeros( m, n, z );
 
-nthDiff = 0;
-nftDiff( 1 : nFrames - 1, 1 : 2, 1 : tsMax - 1 ) = 0; % currently only (:, 2, :) are used
-
 for i = 1 : tsMax - 1
     imFrame0( :, :, :, i ) = imFrame;
+    
 end
 
 nFrame0( 1 : tsMax - 1 ) = 1;
@@ -135,6 +134,7 @@ endBound = [ ( startBound( 2 : end ) - 1 ) nFrames ];
 % sanity check
 if length( startBound ) ~= length( endBound )
     error( 'Block bounds do not match' )
+    
 end
 nBlocks = length( startBound );
 
@@ -144,33 +144,42 @@ hWait1 = waitbar(...
         0,...
         sprintf( 'Reading block 0 of %u', nBlocks ),...
         'Position', [ 517 583 288 60 ] );
-    
+
+nthDiff = 0;
+nftDiff( 1 : nFrames - 1, 1 : 2, 1 : tsMax - 1 ) = 0; % currently only (:, 2, :) are used
 for thisBound = 1 : nBlocks
+    % set up debugging message
+    fprintf(...
+        'Block [ %u %u ]\n', startBound( thisBound ), endBound( thisBound ) );
+    msg = sprintf( 'Processing block %u of %u', thisBound, nBlocks );
+    waitbar( thisBound / nBlocks, hWait1, msg );
+    
     % read block of video
-    fprintf( 'Block [ %u %u ]\n', startBound( thisBound ), endBound( thisBound ) );
-    waitbar( thisBound / nBlocks, hWait1, sprintf( 'Processing block %u of %u', thisBound, nBlocks ) );
-    allFrames = read( videoIn, [ startBound( thisBound) endBound( thisBound ) ] );
+    allFrames = read(...
+        videoIn, [ startBound( thisBound) endBound( thisBound ) ] );
     framesPerBlock = endBound( thisBound ) - startBound( thisBound );
     
-    hWait2 = waitbar(...
-        0,...
-        sprintf( 'Processing frame 1 of %u', framesPerBlock ),...
-        'Position', [ 517 503 288 60 ] );
+    msg = sprintf( 'Processing difference 1 of %u', framesPerBlock )
+    hWait2 = waitbar( 0, msg, 'Position', [ 517 503 288 60 ] );
     
     for k = 1 : nSkip : framesPerBlock - 1        
         nthDiff = nthDiff + 1;        
         imFrameFull	= squeeze( allFrames( :, :, :, k ) );
-        imFrame     = imFrameFull( rcCrop( 2 ) : rcCrop( 4 ), rcCrop( 1 ) : rcCrop( 3 ), : );
+        imFrame = crop( imFrameFull, rcCrop );
         imFrameNextFull = squeeze( allFrames( :, :, :, k + nSkip ) );
-        imFrameNext     = imFrameNextFull( rcCrop( 2 ) : rcCrop( 4 ), rcCrop( 1 ) : rcCrop( 3 ), : );        
+        imFrameNext = crop( imFrameNextFull, rcCrop );
         
         if ( k == 1 ) && ( thisBound == 1 )
             % Auto shift first frame difference by one pixel for scaling.
             disp( 'First frame. Obtaining scaling factor.' )
-            x1Diff = abs( imFrame( :, 1 : rcCrop( 3 ) - rcCrop( 1 ) - 1, : ) - imFrame( :, 2 : rcCrop( 3 ) - rcCrop( 1 ), : ) );
+            imX1 = imFrame( :, 1 : rcCrop( 3 ) - rcCrop( 1 ) - 1, : );
+            imX2 = imFrame( :, 2 : rcCrop( 3 ) - rcCrop( 1 ), : );
+            x1Diff = abs( imX1 - imX2 );
             x1Scale = length( find( x1Diff > nDiffThreshold ) );
-
-            y1Diff = abs( imFrame( 1 : rcCrop( 4 ) - rcCrop( 2 ) - 1, :, : ) - imFrame( 2 : rcCrop( 4 ) - rcCrop( 2 ), :, : ) );
+            
+            imY1 = imFrame( 1 : rcCrop( 4 ) - rcCrop( 2 ) - 1, :, : );
+            imY2 = imFrame( 2 : rcCrop( 4 ) - rcCrop( 2 ), :, : );
+            y1Diff = abs( imY1 - imY2 );
             y1Scale = length( find( y1Diff > nDiffThreshold ) );
 
         end
