@@ -159,7 +159,7 @@ for thisBound = 1 : nBlocks
         videoIn, [ startBound( thisBound) endBound( thisBound ) ] );
     framesPerBlock = endBound( thisBound ) - startBound( thisBound );
     
-    msg = sprintf( 'Processing difference 1 of %u', framesPerBlock )
+    msg = sprintf( 'Processing difference 1 of %u', framesPerBlock );
     hWait2 = waitbar( 0, msg, 'Position', [ 517 503 288 60 ] );
     
     for k = 1 : nSkip : framesPerBlock - 1        
