@@ -1,15 +1,20 @@
 function cropFrame = crop( frame, cropBox )
+% CROP an image to the limits given in the crop box vector.
+% 
+% Usage:
+% cropFrame = crop( frame, cropBox )
+% 
+% Input:
+% frame: image frame to crop.
+% cropBox: 4-element vector with new boundaries fro the image frame. It
+% must be in the following format: [ left top right bottom ] with respect
+% to the top left corner, which is ( 1, 1 ).
+% 
+% Output:
+% cropFrame: Image cropped to the new boundaries.
 
-
-% Default to no cropping
-if cropBox == 0
-    cropBox = [ 1 1 size( frame, 2 ) size( frame, 1 ) ];
-    
-else
-    % To Do: sanity check on crop boundaries   
-%     strFilestem = [ strFilestem '_' num2str( rcCrop( 1 ) ) '-' num2str( rcCrop( 2 ) )  '-' num2str( rcCrop( 3 ) ) '-' num2str( rcCrop( 4 ) ) ];
-
-end
 
 cropFrame = frame(...
     cropBox( 2 ) : cropBox( 4 ), cropBox( 1 ) : cropBox( 3 ), : );
+
+
