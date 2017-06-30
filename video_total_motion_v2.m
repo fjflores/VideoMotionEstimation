@@ -107,12 +107,14 @@ else
 
 end
 
-imFrame = imFrameFull( rcCrop( 2 ) : rcCrop( 4 ), rcCrop( 1 ) : rcCrop( 3 ), : );
+% imFrame = imFrameFull( rcCrop( 2 ) : rcCrop( 4 ), rcCrop( 1 ) : rcCrop( 3 ), : );
+imFrame = crop( imFrameFull, rcCrop );
+[ m, n, z ] = size( imFrame );
 
 % Allocate memory for reference and difference frames.
-imFrame0    = zeros( [ rcCrop( 4 ) - rcCrop( 2 ) + 1 rcCrop( 3 ) - rcCrop( 1 ) + 1 3 3 ], class( imFrame ) );
-imDiff      = zeros( [ rcCrop( 4 ) - rcCrop( 2 ) + 1 rcCrop( 3 ) - rcCrop( 1 ) + 1 3 ] );
-imSumDiff   = zeros( [ rcCrop( 4 ) - rcCrop( 2 ) + 1 rcCrop( 3 ) - rcCrop( 1 ) + 1 3 ] );
+imFrame0 = repmat( zeros( m, n, z ), 1, 1, 1, 3 );
+imDiff = zeros( m, n, z );
+imSumDiff = zeros( m, n, z );
 
 nthDiff = 0;
 nftDiff( 1 : nFrames - 1, 1 : 2, 1 : tsMax - 1 ) = 0; % currently only (:, 2, :) are used
