@@ -35,9 +35,9 @@ function [ arrMotion, t, dsScale, imSumDiff ] = video_total_motion_v2(...
 %
 %       arrMotion:     An array with time courses of estimated motion,
 %                      one time course for each of tsMax time-scale.
-%       
+%
 %       t:             A vector with timestamps for the arrMotion.
-% 
+%
 %       dsScale:       Approximate 1-pixel deviation scale.
 %
 %   HARDCODED:
@@ -101,7 +101,7 @@ if cropBox == 0
     cropStr = 'noCrop';
     strFilestem = strcat( strFilestem, cropStr );
     
-else   
+else
     % Get frame dimensions from crop box.
     height = cropBox( 4 ) - cropBox( 2 ) + 1;
     width = cropBox( 3 ) - cropBox( 1 ) + 1;
@@ -118,14 +118,14 @@ else
         num2str( cropBox( 3 ) ), '-',...
         num2str( cropBox( 4 ) ) )
     strFilestem = strcat( strFilestem, cropStr );
-
+    
 end
 
 % Allocate memory for reference and difference frames.
-if regexp( videoIn.VideoFormat, 'RGB' ) == 1 
+if regexp( videoIn.VideoFormat, 'RGB' ) == 1
     z = 3;
-
-else 
+    
+else
     z = 1;
     
 end
@@ -136,7 +136,7 @@ imSumDiff = zeros( height, width, z );
 
 % for i = 1 : tsMax - 1
 %     imFrame0( :, :, :, i ) = imFrame;
-%     
+%
 % end
 
 nFrame0( 1 : tsMax - 1 ) = 1;
@@ -158,9 +158,9 @@ nBlocks = length( startBound );
 fprintf(' Done!\n')
 
 hWait1 = waitbar(...
-        0,...
-        sprintf( 'Reading block 0 of %u', nBlocks ),...
-        'Position', [ 517 583 288 60 ] );
+    0,...
+    sprintf( 'Reading block 0 of %u', nBlocks ),...
+    'Position', [ 517 583 288 60 ] );
 
 nthDiff = 0;
 nftDiff( 1 : nFrames - 1, 1 : 2, 1 : tsMax - 1 ) = 0; % currently only (:, 2, :) are used
@@ -179,8 +179,8 @@ for thisBound = 1 : nBlocks
     msg = sprintf( 'Processing difference 1 of %u', framesPerBlock );
     hWait2 = waitbar( 0, msg, 'Position', [ 517 503 288 60 ] );
     
-    for k = 1 : nSkip : framesPerBlock - 1        
-        nthDiff = nthDiff + 1;        
+    for k = 1 : nSkip : framesPerBlock - 1
+        nthDiff = nthDiff + 1;
         imFrameFull	= squeeze( allFrames( :, :, :, k ) );
         imFrame = crop( imFrameFull, cropBox );
         imFrameNextFull = squeeze( allFrames( :, :, :, k + nSkip ) );
@@ -189,18 +189,9 @@ for thisBound = 1 : nBlocks
         if ( k == 1 ) && ( thisBound == 1 )
             % Auto shift first frame difference by one pixel for scaling.
             disp( 'First frame. Obtaining scaling factor.' )
-            imX1 = imFrame( :, 1 : cropBox( 3 ) - cropBox( 1 ) - 1, : );
-            imX2 = imFrame( :, 2 : cropBox( 3 ) - cropBox( 1 ), : );
-            x1Diff = abs( imX1 - imX2 );
-            figure, imagesc( imX1 - imX2 )
-            x1Scale = length( find( x1Diff > nDiffThreshold ) );
+            [ x1Scale, y1Scale, x1Diff, y1Diff ] = onepixdev(...
+                imFrame, cropBox, nDiffThreshold );
             
-            imY1 = imFrame( 1 : cropBox( 4 ) - cropBox( 2 ) - 1, :, : );
-            imY2 = imFrame( 2 : cropBox( 4 ) - cropBox( 2 ), :, : );
-            y1Diff = abs( imY1 - imY2 );
-            figure, image( imY1 - imY2 );
-            y1Scale = length( find( y1Diff > nDiffThreshold ) );
-
         end
         
         imDiff = double( abs( imFrameNext - imFrame ) );
@@ -209,10 +200,10 @@ for thisBound = 1 : nBlocks
         nftDiff( nthDiff, 2, 1 ) = length( find( imDiff > nDiffThreshold ) );
         
         waitbar( k / framesPerBlock, hWait2, sprintf( 'Processing frame %u of %u', k, framesPerBlock ) );
-    
+        
     end
     close( hWait2 );
-
+    
     
 end
 close( hWait1 );
