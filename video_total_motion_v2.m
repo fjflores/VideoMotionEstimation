@@ -1,5 +1,5 @@
 function [ arrMotion, t, dsScale, imSumDiff ] = video_total_motion_v2(...
-    strFilename, rcCrop, bShow, bWrite, offset )
+    strFilename, cropBox, bShow, bWrite, offset )
 
 % video_total_motion_v2( strFilename, rcCrop, bShow, bWrite )
 %
@@ -65,13 +65,13 @@ function [ arrMotion, t, dsScale, imSumDiff ] = video_total_motion_v2(...
 
 
 % Hardcoded information:
-nDiffThreshold  = 20;    % [1,255] Difference threshold for inclusion,
+nDiffThreshold  = 10;    % [1,255] Difference threshold for inclusion,
 % independently for each 8-bit channel.
 
 % It might be better use a single luminance channel
 % particularly for speed (not yet implemented).
 
-tsMax =  2;    % Number of temporal differences to compute.
+tsMax =  1;    % Number of temporal differences to compute.
 
 % from nSkip*2^1 to nSkip*2^(tsMax-1)
 nSkip =  1;   % Decimation factor. Set to 1 for no decimation.
@@ -82,45 +82,62 @@ if nargin < 5
     
 end
 
-fprintf( 'Preprocessing...' )
+fprintf( 'Getting video info...' )
 strFilestem = strFilename( 1 : length( strFilename ) - 4 );
 videoIn = VideoReader( strFilename )
 nFrames = get( videoIn, 'NumberOfFrames' );
 frameRate = get( videoIn, 'FrameRate' );
 
-% Get a full frame.
-imFrameFull = read( videoIn, 1 );
-
 % Default to no cropping
-if rcCrop == 0
-    [ m, n, z ] = size( imFrameFull );
-    rcCrop = [ 1 1 n m ];
-    clear m n z
+if cropBox == 0
+    % Get actual frame dimensions.
+    height = videoIn.Height;
+    width = videoIn.Width;
     
-else
-    % To Do: sanity check on crop boundaries
+    % Set cropbox to fullframe
+    cropBox = [ 1 1 width height ];
+    
+    % Define string to append to filename.
+    cropStr = 'noCrop';
+    strFilestem = strcat( strFilestem, cropStr );
+    
+else   
+    % Get frame dimensions from crop box.
+    height = cropBox( 4 ) - cropBox( 2 ) + 1;
+    width = cropBox( 3 ) - cropBox( 1 ) + 1;
+    
+    % Sanity check on crop boundaries.
+    assert(...
+        (height <= videoIn.Height) & (width <= videoIn.Width),...
+        'Crop box boundaries are larger than frame size' )
+    
+    % Define string to append to filename.
     cropStr = strcat(...
-        num2str( rcCrop( 1 ) ), '-',...
-        num2str( rcCrop( 2 ) ), '-',...
-        num2str( rcCrop( 3 ) ), '-',...
-        num2str( rcCrop( 4 ) ) )
+        num2str( cropBox( 1 ) ), '-',...
+        num2str( cropBox( 2 ) ), '-',...
+        num2str( cropBox( 3 ) ), '-',...
+        num2str( cropBox( 4 ) ) )
     strFilestem = strcat( strFilestem, cropStr );
 
 end
 
-% Crop image if required.
-imFrame = crop( imFrameFull, rcCrop );
-[ m, n, z ] = size( imFrame );
-
 % Allocate memory for reference and difference frames.
-imFrame0 = repmat( zeros( m, n, z ), 1, 1, 1, 3 );
-imDiff = zeros( m, n, z );
-imSumDiff = zeros( m, n, z );
+if regexp( videoIn.VideoFormat, 'RGB' ) == 1 
+    z = 3;
 
-for i = 1 : tsMax - 1
-    imFrame0( :, :, :, i ) = imFrame;
+else 
+    z = 1;
     
 end
+
+% imFrame0 = repmat( zeros( width, height, z ), 1, 1, 1, 3 );
+imDiff = zeros( height, width, z );
+imSumDiff = zeros( height, width, z );
+
+% for i = 1 : tsMax - 1
+%     imFrame0( :, :, :, i ) = imFrame;
+%     
+% end
 
 nFrame0( 1 : tsMax - 1 ) = 1;
 
@@ -165,27 +182,30 @@ for thisBound = 1 : nBlocks
     for k = 1 : nSkip : framesPerBlock - 1        
         nthDiff = nthDiff + 1;        
         imFrameFull	= squeeze( allFrames( :, :, :, k ) );
-        imFrame = crop( imFrameFull, rcCrop );
+        imFrame = crop( imFrameFull, cropBox );
         imFrameNextFull = squeeze( allFrames( :, :, :, k + nSkip ) );
-        imFrameNext = crop( imFrameNextFull, rcCrop );
+        imFrameNext = crop( imFrameNextFull, cropBox );
         
         if ( k == 1 ) && ( thisBound == 1 )
             % Auto shift first frame difference by one pixel for scaling.
             disp( 'First frame. Obtaining scaling factor.' )
-            imX1 = imFrame( :, 1 : rcCrop( 3 ) - rcCrop( 1 ) - 1, : );
-            imX2 = imFrame( :, 2 : rcCrop( 3 ) - rcCrop( 1 ), : );
+            imX1 = imFrame( :, 1 : cropBox( 3 ) - cropBox( 1 ) - 1, : );
+            imX2 = imFrame( :, 2 : cropBox( 3 ) - cropBox( 1 ), : );
             x1Diff = abs( imX1 - imX2 );
+            figure, imagesc( imX1 - imX2 )
             x1Scale = length( find( x1Diff > nDiffThreshold ) );
             
-            imY1 = imFrame( 1 : rcCrop( 4 ) - rcCrop( 2 ) - 1, :, : );
-            imY2 = imFrame( 2 : rcCrop( 4 ) - rcCrop( 2 ), :, : );
+            imY1 = imFrame( 1 : cropBox( 4 ) - cropBox( 2 ) - 1, :, : );
+            imY2 = imFrame( 2 : cropBox( 4 ) - cropBox( 2 ), :, : );
             y1Diff = abs( imY1 - imY2 );
+            figure, image( imY1 - imY2 );
             y1Scale = length( find( y1Diff > nDiffThreshold ) );
 
         end
         
         imDiff = double( abs( imFrameNext - imFrame ) );
-        imSumDiff( find( imDiff > nDiffThreshold ) ) = imSumDiff( find( imDiff > nDiffThreshold ) ) + imDiff( find( imDiff > nDiffThreshold ) );
+        imSumDiff( find( imDiff > nDiffThreshold ) ) = imSumDiff(...
+            find( imDiff > nDiffThreshold ) ) + imDiff( find( imDiff > nDiffThreshold ) );
         nftDiff( nthDiff, 2, 1 ) = length( find( imDiff > nDiffThreshold ) );
         
         waitbar( k / framesPerBlock, hWait2, sprintf( 'Processing frame %u of %u', k, framesPerBlock ) );
@@ -222,9 +242,9 @@ imSumDiff = 3 .* imSumDiff ./ ( max( imSumDiff( : ) ) );
 imSumDiff( find( imSumDiff > 1 ) ) = 1;
 
 % accumulate the sumdiffs
-for jj = 1 : rcCrop( 4 ) - rcCrop( 2 )
-    for ii = 1 : rcCrop( 3 ) - rcCrop( 1 )
-        for cc = 1 : 3
+for jj = 1 : height
+    for ii = 1 : width
+        for cc = 1 : z
             if imSumDiff( jj, ii, cc ) > 0
                 imSumDiff( jj, ii, cc ) = 1 - ( 0.8 * ( 1 - imSumDiff( jj, ii, cc ) ) );
                 
