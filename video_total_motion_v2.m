@@ -254,25 +254,25 @@ if bShow
     imagesc( rgb2gray( imFrame ) )
     title( 'Original frame' )
     colorbar
-    axis equal
+    axis square
     
     subplot( 1, 3, 2 )
     imagesc( rgb2gray( x1Diff ) )
     title( 'x-axis one pixel difference' )
     colorbar
-    axis equal
+    axis square
     
     subplot( 1, 3, 3 )
     imagesc( rgb2gray( y1Diff ) )
     title( 'y-axis one pixel difference' )
     colorbar
-    axis equal
+    axis square
     
     figure
     imagesc( rgb2gray( imSumDiff ) )
     title( 'Total differences across frames' )
     colorbar
-    axis equal
+    axis square
     
 end
 
