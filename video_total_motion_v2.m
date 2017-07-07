@@ -212,7 +212,7 @@ close( hWait1 );
 arrMotion = squeeze( nftDiff( :, 2, : ) );
 t0 = 1 / frameRate + offset;
 tMax = ( nFrames / frameRate ) - ( 1 / frameRate ) + offset;
-t = linspace( t0, tMax, nFrames - 1 ); 
+t = linspace( t0, tMax, nFrames - 1 );
 
 if bWrite
     saveas( gcf, [ strFilestem '_total-motion.fig' ] )
@@ -221,13 +221,6 @@ end
 
 dsScale = sqrt( x1Scale * x1Scale + y1Scale * y1Scale );
 fprintf( [ '\nApproximate one pixel deviation scale: ' num2str( dsScale ) ' \n\n' ] );
-
-figure
-stdFactor = dsScale ./ frameRate;
-plot( t, arrMotion ./ stdFactor )
-xlabel( 'time (sec)' )
-ylabel( 'movement speed (pixels/sec)' )
-
 
 imSumDiff = 3 .* imSumDiff ./ ( max( imSumDiff( : ) ) );
 imSumDiff( find( imSumDiff > 1 ) ) = 1;
@@ -248,10 +241,38 @@ for jj = 1 : height
 end
 
 
-% show if desired
+% show results if desired
 if bShow
     figure
-    imagesc( imSumDiff )
+    stdFactor = dsScale ./ frameRate;
+    plot( t, arrMotion ./ stdFactor )
+    xlabel( 'time (sec)' )
+    ylabel( 'movement speed (pixels/sec)' )
+    
+    figure
+    subplot( 1, 3, 1 )
+    imagesc( rgb2gray( imFrame ) )
+    title( 'Original frame' )
+    colorbar
+    axis equal
+    
+    subplot( 1, 3, 2 )
+    imagesc( rgb2gray( x1Diff ) )
+    title( 'x-axis one pixel difference' )
+    colorbar
+    axis equal
+    
+    subplot( 1, 3, 3 )
+    imagesc( rgb2gray( y1Diff ) )
+    title( 'y-axis one pixel difference' )
+    colorbar
+    axis equal
+    
+    figure
+    imagesc( rgb2gray( imSumDiff ) )
+    title( 'Total differences across frames' )
+    colorbar
+    axis equal
     
 end
 
